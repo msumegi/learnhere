@@ -1,0 +1,43 @@
+name: Deploy LearnHere
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out tabletrade
+        uses: actions/checkout@v4
+        with:
+          repository: msumegi/tabletrade
+          ref: main
+          path: src
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build the learnhere.ca copy
+        run: |
+          if [ ! -f src/demos/range-path/tools/publish-learnhere.mjs ]; then
+            curl -fsSL https://raw.githubusercontent.com/msumegi/tabletrade/d12a572aaa991e9be65fdbd20f64f44826e842d3/demos/range-path/tools/publish-learnhere.mjs -o src/demos/range-path/tools/publish-learnhere.mjs
+          fi
+          node src/demos/range-path/tools/publish-learnhere.mjs "$RUNNER_TEMP/site"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/site
+      - id: deployment
+        uses: actions/deploy-pages@v4
